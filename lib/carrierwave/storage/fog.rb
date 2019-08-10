@@ -293,7 +293,7 @@ module CarrierWave
         #
         # [String] contents of file
         def read
-          file_body = file.body
+          file_body = file.body(fog_options)
 
           return if file_body.nil?
           return file_body unless file_body.is_a?(::File)
@@ -483,7 +483,7 @@ module CarrierWave
         # [Fog::#{provider}::File] file data from remote service
         #
         def file
-          @file ||= directory.files.head(path)
+          @file ||= directory.files.head(path, fog_options)
         end
 
         def acl_header
@@ -492,6 +492,18 @@ module CarrierWave
           else
             {}
           end
+        end
+
+        def fog_options
+          return {} unless @uploader.fog_attributes[:encryption]
+
+           {
+            headers: {
+              'x-amz-server-side-encryption-customer-algorithm' => @uploader.fog_attributes[:encryption],
+              'x-amz-server-side-encryption-customer-key' => Base64.encode64(@uploader.fog_attributes[:encryption_key].to_s).chomp!,
+              'x-amz-server-side-encryption-customer-key-md5' => Base64.encode64(OpenSSL::Digest::MD5.digest(@uploader.fog_attributes[:encryption_key].to_s)).chomp!
+            }
+          }
         end
 
         def fog_provider
